@@ -30,7 +30,8 @@ black_list = [
     ("Tênis Authentic Floral Checkerboard Marshmallow", 229.99),
     ("Tênis Mary Jane Suede Grape Jam", 199.99),
     ("Tênis Old Skool Foxglove", 229.99),
-    ("Tênis Old Skool Foxglove", 229.99)
+    ("Tênis Old Skool Foxglove", 229.99),
+    ("Tênis Ultrarange Vr3 Mte Classic Navy", 449.99) 
 ]
 
 
@@ -83,4 +84,5 @@ for produto in data.get("products", []):
     print(f"Price value: R$ {price_value}")
     print(f"Percentual of Discount: {percentual_of_discount}%")
     print(f"Discount value: R$ {discount_value}")
+
     print("-" * 50)
