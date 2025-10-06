@@ -102,9 +102,10 @@ def get_with_retries(url, headers=None, timeout=10):
     return None
 
 
-# ---- Função para checar produtos e enviar mensagens ----
+# ---- Função para checar produtos e enviar mensagens (CORRIGIDA) ----
 def check_products():
-    black_list = load_blacklist()  # Carrega a blacklist atualizada a cada execução
+    # Carrega a blacklist atualizada a cada execução
+    black_list = load_blacklist()
 
     try:
         resp = get_with_retries(url, headers=headers)
@@ -117,18 +118,36 @@ def check_products():
         for produto in data.get("products", []):
             name = produto.get("name") or ""
             discount_value = produto.get("discountPrice", {}).get("value")
+            price_value = produto.get("price", {}).get(
+                "value"
+            )  # Adicionado: Pega o preço normal
 
-            if not name or discount_value is None:
+            if not name or price_value is None:
                 continue
 
+            # **CORREÇÃO 1: Lógica de Preços para Blacklist**
+            # Usa o valor do desconto se existir, ou o preço normal.
+            # Isso garante que todos os produtos com um preço sejam checados,
+            # mesmo que não estejam em promoção.
+            price_to_check = (
+                discount_value if discount_value is not None else price_value
+            )
+
             # Ignorar produtos na blacklist
-            if (name.lower().strip(), discount_value) in [
+            if (name.lower().strip(), price_to_check) in [
                 (n.lower().strip(), d) for n, d in black_list
             ]:
                 continue
 
+            # O produto é válido e não está na blacklist, prossegue com a checagem de estoque.
+
             product_code = produto.get("code")
-            product_url = f"{base_url}/arezzocoocc/v2/vans/products/{product_code}/dynamic-product-fields?fields=DYNAMIC_FIELDS_PDP"
+            product_url = (
+                f"{base_url}/arezzocoocc/v2/vans/products/{product_code}/"
+                "dynamic-product-fields?fields=DYNAMIC_FIELDS_PDP"
+            )
+
+            # **CORREÇÃO 2: Removido o breakpoint() que pausava o script**
 
             prod_resp = get_with_retries(product_url, headers=headers)
             if not prod_resp:
@@ -152,15 +171,25 @@ def check_products():
                     )
                     break
 
-            price_value = produto.get("price", {}).get("value")
             percentual_of_discount = produto.get("percentualOfDiscount", 0)
             product_page_url = base_url + produto.get("url", "")
+
+            # Formata a mensagem com base no preço.
+            # Se discount_value for None, mostramos apenas o preço normal e 0% de desconto.
+            price_info = f"<b>Preço:</b> R$ {price_value}"
+            discount_info = ""
+            if discount_value is not None:
+                price_info = f"<b>Preço Normal:</b> R$ {price_value}"
+                discount_info = (
+                    f"<b>Preço Atual:</b> R$ {discount_value}\n"
+                    f"<b>Desconto:</b> -{percentual_of_discount}%\n"
+                )
 
             message = (
                 f"<b>Nome:</b> {name}\n"
                 f"<b>Link:</b> {product_page_url}\n"
-                f"<b>Preço:</b> R$ {price_value}\n"
-                f"<b>Desconto:</b> R$ {discount_value} (-{percentual_of_discount}%)\n"
+                f"{price_info}\n"
+                f"{discount_info}"
                 f"<b>Disponível:</b> {'Sim' if sellable_42 else 'Não'}\n"
                 f"<b>Estoque:</b> {stock_level_42} [{stock_status_42}]\n"
                 f"{'-'*40}"
@@ -187,18 +216,20 @@ def check_products():
 # ---- Loop principal que roda a cada 5 minutos ----
 print("✅ Bot iniciado. Esperando próximo múltiplo de 5 minutos...")
 
-while True:
-    try:
-        now = datetime.now()
-        if now.minute % 5 == 0:
-            print(f"⏰ Rodando check_products() às {now.strftime('%H:%M:%S')}")
-            check_products()
+check_products()
 
-            # Espera até o próximo minuto para evitar múltiplos envios dentro do mesmo minuto
-            while datetime.now().minute == now.minute:
-                time.sleep(5)
-        else:
-            time.sleep(10)
-    except Exception as e:
-        print(f"[Erro no loop principal]: {e}")
-        time.sleep(30)
+# while True:
+#     try:
+#         now = datetime.now()
+#         if now.minute % 5 == 0:
+#             print(f"⏰ Rodando check_products() às {now.strftime('%H:%M:%S')}")
+#             check_products()
+
+#             # Espera até o próximo minuto para evitar múltiplos envios dentro do mesmo minuto
+#             while datetime.now().minute == now.minute:
+#                 time.sleep(5)
+#         else:
+#             time.sleep(10)
+#     except Exception as e:
+#         print(f"[Erro no loop principal]: {e}")
+#         time.sleep(30)
