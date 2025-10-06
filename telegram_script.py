@@ -12,29 +12,34 @@ TG_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 # ---- Config Vans ----
 base_url = "https://www.vans.com.br"
-url = ("https://www.vans.com.br/arezzocoocc/v2/vans/products/search?"
-       "category=ULTIMASUNIDADES&currentPage=0&pageSize=24&fields=FULL&"
-       "query=:creation-time:shoeSize:42&storeFinder=false")
+url = (
+    "https://www.vans.com.br/arezzocoocc/v2/vans/products/search?"
+    "category=ULTIMASUNIDADES&currentPage=0&pageSize=240&fields=FULL&"
+    "query=:creation-time:shoeSize:42&storeFinder=false"
+)
 
 headers = {
-    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                   "AppleWebKit/537.36 (KHTML, like Gecko) "
-                   "Chrome/126.0.0.0 Safari/537.36")
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/126.0.0.0 Safari/537.36"
+    )
 }
 
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # segundos
 
+
 # ---- Função para carregar blacklist do arquivo ----
-def load_blacklist(filename='blacklist.txt'):
+def load_blacklist(filename="blacklist.txt"):
     black_list = []
     try:
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
-                parts = line.rsplit(',', 1)
+                parts = line.rsplit(",", 1)
                 if len(parts) == 2:
                     name = parts[0].strip()
                     try:
@@ -48,6 +53,7 @@ def load_blacklist(filename='blacklist.txt'):
         print(f"[Aviso] Arquivo {filename} não encontrado. Blacklist vazia.")
     return black_list
 
+
 # ---- Função para enviar mensagem ao Telegram ----
 def send_telegram(message):
     if not TELEGRAM_TOKEN or not CHAT_ID:
@@ -56,17 +62,19 @@ def send_telegram(message):
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = requests.get(TG_URL, params={
-                "chat_id": CHAT_ID,
-                "text": message,
-                "parse_mode": "HTML"
-            }, timeout=10)
+            response = requests.get(
+                TG_URL,
+                params={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"},
+                timeout=10,
+            )
 
             if response.status_code == 200:
                 print("[✅ Enviado para o Telegram]")
                 return
             else:
-                print(f"[Erro Telegram - Tentativa {attempt}] Código: {response.status_code}")
+                print(
+                    f"[Erro Telegram - Tentativa {attempt}] Código: {response.status_code}"
+                )
                 print(response.text)
 
         except Exception as e:
@@ -77,6 +85,7 @@ def send_telegram(message):
             time.sleep(RETRY_DELAY)
 
     print("[❌ Falha ao enviar mensagem para o Telegram após várias tentativas]")
+
 
 # ---- Função auxiliar para fazer requisição GET com retries ----
 def get_with_retries(url, headers=None, timeout=10):
@@ -91,6 +100,7 @@ def get_with_retries(url, headers=None, timeout=10):
                 print(f"⏳ Tentando novamente em {RETRY_DELAY} segundos...")
                 time.sleep(RETRY_DELAY)
     return None
+
 
 # ---- Função para checar produtos e enviar mensagens ----
 def check_products():
@@ -112,7 +122,9 @@ def check_products():
                 continue
 
             # Ignorar produtos na blacklist
-            if (name.lower().strip(), discount_value) in [(n.lower().strip(), d) for n, d in black_list]:
+            if (name.lower().strip(), discount_value) in [
+                (n.lower().strip(), d) for n, d in black_list
+            ]:
                 continue
 
             product_code = produto.get("code")
@@ -120,7 +132,9 @@ def check_products():
 
             prod_resp = get_with_retries(product_url, headers=headers)
             if not prod_resp:
-                print(f"[Aviso] Falha ao obter dados do produto {product_code}, pulando...")
+                print(
+                    f"[Aviso] Falha ao obter dados do produto {product_code}, pulando..."
+                )
                 continue
 
             prod_data = prod_resp.json()
@@ -133,7 +147,9 @@ def check_products():
                 if variant.get("code") == f"{product_code}-42":
                     sellable_42 = variant.get("sellable", False)
                     stock_level_42 = variant.get("stock", {}).get("stockLevel", 0)
-                    stock_status_42 = variant.get("stock", {}).get("stockLevelStatus", "outOfStock")
+                    stock_status_42 = variant.get("stock", {}).get(
+                        "stockLevelStatus", "outOfStock"
+                    )
                     break
 
             price_value = produto.get("price", {}).get("value")
@@ -152,7 +168,10 @@ def check_products():
             messages.append(message)
 
         if messages:
-            full_message = f"<b>Atualização {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</b>\n\n" + "\n\n".join(messages)
+            full_message = (
+                f"<b>Atualização {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</b>\n\n"
+                + "\n\n".join(messages)
+            )
             send_telegram(full_message)
         else:
             print("Nenhum produto novo ou válido para enviar.")
@@ -163,6 +182,7 @@ def check_products():
             send_telegram(f"<b>Erro geral</b>: {e}")
         except:
             print("[Erro ao enviar mensagem de erro para Telegram]")
+
 
 # ---- Loop principal que roda a cada 5 minutos ----
 print("✅ Bot iniciado. Esperando próximo múltiplo de 5 minutos...")
