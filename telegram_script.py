@@ -216,20 +216,18 @@ def check_products():
 # ---- Loop principal que roda a cada 5 minutos ----
 print("✅ Bot iniciado. Esperando próximo múltiplo de 5 minutos...")
 
-check_products()
+while True:
+    try:
+        now = datetime.now()
+        if now.minute % 5 == 0:
+            print(f"⏰ Rodando check_products() às {now.strftime('%H:%M:%S')}")
+            check_products()
 
-# while True:
-#     try:
-#         now = datetime.now()
-#         if now.minute % 5 == 0:
-#             print(f"⏰ Rodando check_products() às {now.strftime('%H:%M:%S')}")
-#             check_products()
-
-#             # Espera até o próximo minuto para evitar múltiplos envios dentro do mesmo minuto
-#             while datetime.now().minute == now.minute:
-#                 time.sleep(5)
-#         else:
-#             time.sleep(10)
-#     except Exception as e:
-#         print(f"[Erro no loop principal]: {e}")
-#         time.sleep(30)
+            # Espera até o próximo minuto para evitar múltiplos envios dentro do mesmo minuto
+            while datetime.now().minute == now.minute:
+                time.sleep(5)
+        else:
+            time.sleep(10)
+    except Exception as e:
+        print(f"[Erro no loop principal]: {e}")
+        time.sleep(30)
